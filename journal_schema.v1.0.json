@@ -1,0 +1,176 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RPG Journal Entry",
+  "type": "object",
+  "required": [
+    "turn",
+    "timestamp"
+  ],
+  "properties": {
+    "turn": {
+      "type": "integer",
+      "description": "The turn number for this entry"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this turn happened in real-world time"
+    },
+    "location": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Name of the current location or scene"
+    },
+    "time": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "In-game day part"
+    },
+    "scene_ref": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Reference ID for the scene, if applicable"
+    },
+    "scene_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags that describe the scene"
+    },
+    "dialogue": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "speaker",
+          "text"
+        ],
+        "properties": {
+          "speaker": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "All lines of dialogue this turn"
+    },
+    "choices": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The options given to the player this turn"
+    },
+    "choice_taken": {
+      "type": [
+        "string",
+        "integer",
+        "null"
+      ],
+      "description": "The option chosen or its index"
+    },
+    "relationship_changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "change": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "inventory_changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "type": "string"
+          },
+          "change": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "money_change": {
+      "type": "object",
+      "properties": {
+        "g": {
+          "type": "integer"
+        },
+        "s": {
+          "type": "integer"
+        },
+        "c": {
+          "type": "integer"
+        }
+      }
+    },
+    "hooks_added": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "flags_set": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "promises": {
+      "type": "array",
+      "description": "Per-turn promise records (open/kept/broken) relevant to this scene",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "status"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "kept",
+              "broken"
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
