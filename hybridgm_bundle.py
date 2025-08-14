@@ -1,7 +1,7 @@
 
 # hybridgm_bundle.py — Single-file HybridGM engine (strict schemas, fixed journal validation)
 # Build marker for preflight version checks:
-__BUILD__ = "2025-08-14-class-onboarding-v2"
+P25-08-14-class-onboarding-v2+mpstats"
 
 from __future__ import annotations
 import os, re, json, hashlib
@@ -368,8 +368,8 @@ def _minimal_save() -> Dict[str, Any]:
         "town": "Ridgehaven",
         "obj": [],
         "party": {
-            "You": {"name": "", "class": "", "LV": 1, "HP": 20, "STA": 10, "MaxHP": 20, "MaxSTA": 10, "XP": 0, "XP_to_next": 100},
-            "Appa": {"present": None, "name": "Appa", "HP": 10, "STA": 10, "MaxHP": 10, "MaxSTA": 10},
+            "You": {"name": "", "class": "", "LV": 1, "HP": 20, "MP": 5, "STA": 10, "MaxHP": 20, "MaxMP": 5, "MaxSTA": 10, "stats": {"Might":1,"Agility":1,"Grit":1,"Focus":1,"Insight":1,"Presence":1}, "XP": 0, "XP_to_next": 100},
+            "Appa": {"present": None, "name": "Appa", "HP": 10, "STA": 10, "MaxHP": 10, "MaxSTA": 10, "stats": {"Might":1,"Agility":1,"Grit":1,"Focus":0,"Insight":0,"Presence":1}, "XP":0, "XP_to_next":50},
             "members": [], "marching_order": ["You","Appa"]
         },
         "inventory": [],
@@ -609,3 +609,4 @@ def auto_new_game(user_text: str) -> Optional[Tuple[str, Dict[str, Any]]]:
     # Else start prologue immediately (persists)
     scene = start_prologue_now(SAVE)
     return (scene, SAVE)
+
