@@ -1,7 +1,6 @@
-
 # hybridgm_bundle.py — Single-file HybridGM engine (strict schemas, fixed journal validation)
 # Build marker for preflight version checks:
-P25-08-14-class-onboarding-v2+mpstats"
+__BUILD__ = "2025-08-14-class-onboarding-v2"
 
 from __future__ import annotations
 import os, re, json, hashlib
@@ -368,8 +367,8 @@ def _minimal_save() -> Dict[str, Any]:
         "town": "Ridgehaven",
         "obj": [],
         "party": {
-            "You": {"name": "", "class": "", "LV": 1, "HP": 20, "MP": 5, "STA": 10, "MaxHP": 20, "MaxMP": 5, "MaxSTA": 10, "stats": {"Might":1,"Agility":1,"Grit":1,"Focus":1,"Insight":1,"Presence":1}, "XP": 0, "XP_to_next": 100},
-            "Appa": {"present": None, "name": "Appa", "HP": 10, "STA": 10, "MaxHP": 10, "MaxSTA": 10, "stats": {"Might":1,"Agility":1,"Grit":1,"Focus":0,"Insight":0,"Presence":1}, "XP":0, "XP_to_next":50},
+            "You": {"name": "", "class": "", "LV": 1, "HP": 20, "STA": 10, "MaxHP": 20, "MaxSTA": 10, "XP": 0, "XP_to_next": 100},
+            "Appa": {"present": None, "name": "Appa", "HP": 10, "STA": 10, "MaxHP": 10, "MaxSTA": 10},
             "members": [], "marching_order": ["You","Appa"]
         },
         "inventory": [],
@@ -609,4 +608,250 @@ def auto_new_game(user_text: str) -> Optional[Tuple[str, Dict[str, Any]]]:
     # Else start prologue immediately (persists)
     scene = start_prologue_now(SAVE)
     return (scene, SAVE)
+
+
+    # ===== Public API: Single-Scene Onboarding Flow =====
+    
+# === Single-Scene Onboarding API (public) =====================================
+def run_single_scene_onboarding(USER_TEXT: str):
+    """
+    Public entry: single-scene onboarding + immediate prologue.
+    Returns (scene_text, SAVE). Always persists before sending text.
+    Behavior:
+      - If USER_TEXT starts a New Game: initialize save/journal, persist an onboarding prompt turn, return prompt+footer.
+      - Else if USER_TEXT contains a profile reply: persist profile capture as next turn, then start_prologue_now(SAVE) and return that scene (already persisted + footer).
+      - Else: return (None, SAVE) so caller can continue normal loop.
+    """
+    import re
+    # Local helpers from this module
+    try:
+        _parse = parse_profile_from_text
+    except NameError:
+        raise RuntimeError("ENGINE_MISSING: parse_profile_from_text")
+    try:
+        _apply = apply_profile
+        _start_prologue = start_prologue_now
+        _end = end_turn
+        _ws = write_save
+        _aj = append_journal
+        _footer = compose_footer
+        _load = load_latest_save_or_none
+    except NameError as e:
+        raise RuntimeError(f"ENGINE_MISSING: {e}")
+    
+    lowered = (USER_TEXT or "").strip().lower()
+    is_new = "new game" in lowered or lowered == "start" or lowered == "-new game" or lowered == "newgame"
+
+    # Ensure a SAVE exists (fresh for New Game)
+    SAVE = _load() or {}
+
+    def _ensure_minimal_save():
+        nonlocal SAVE
+        if not SAVE or not isinstance(SAVE, dict) or not SAVE.get("party"):
+            # Use the module's minimal initializer if present; otherwise create a small template.
+            # (We avoid external imports per engine policy.)
+            SAVE = {
+                "schema": "save.v1.2",
+                "turn": 0,
+                "time": "Morning",
+                "loc": "Greyfen Forest Edge",
+                "world": "Vantiel",
+                "region": "Greyfen Marches",
+                "town": "Ridgehaven",
+                "obj": [],
+                "party": {
+                    "You": {"name":"", "class":"", "LV":1, "HP":20, "MP":5, "STA":10, "MaxHP":20, "MaxMP":5, "MaxSTA":10,
+                            "stats":{"Might":1,"Agility":1,"Grit":1,"Focus":1,"Insight":1,"Presence":1},
+                            "cooldowns":{}, "conditions":[], "skills":[], "XP":0, "XP_to_next":100, "last_level_up_turn":0},
+                    "Appa": {"present": None, "name":"Appa", "HP":10, "STA":10, "MaxHP":10, "MaxSTA":10,
+                             "stats":{"Might":1,"Agility":1,"Grit":1,"Focus":0,"Insight":0,"Presence":1},
+                             "conditions":[], "moves":["Bark","Bite","Guard"], "XP":0, "XP_to_next":50},
+                    "members": [], "marching_order": ["You","Appa"]
+                },
+                "inventory": [], "money":{"gold":0,"silver":0,"copper":0},
+                "inv_delta":{"found":[],"spent":[],"consumed":[],"dropped":[],"equipped":[],"notes":[]},
+                "quests": [], "promises": [], "relationships": {}, "hooks": [],
+                "flags":{"origin":"Earth","prologue":{"city":"","attacker":"","death":True,"completed":False},
+                         "gate_party_meet":False,"romance_intensity":"Cautious",
+                         "guild":{"rank":"Copper","rank_points":0,"rp_pending":0},
+                         "reputation":{},"preferences":{"tone":"","romance":"","nsfw":False,"formatting":True},
+                         "integrity":{"schema_migration":"v1.2","save_hash":""}},
+                "crystals":{"I":0,"II":0,"III":0,"IV":0,"V":0},
+                "position":{"town":"Ridgehaven","area":"Outskirts","node":"Greyfen Forest Edge"},
+                "weather":"","light":"",
+                "since_short_rest":0,"since_long_rest":0,"day_count":1,"turn_tags":[],
+                "dialogue_log":[],"prev_turn":{"turn":0,"ref":""},
+                "motifs":{"running_jokes":[],"motifs_summary":""},
+                "promises_summary":"","turn_log":[]
+            }
+
+    def _guard_persistence():
+        # Minimal on-disk assert (mirror of external guard)
+        from pathlib import Path as _P
+        s = _P("/mnt/data/save.json"); j = _P("/mnt/data/saves/journal.ndjson")
+        assert s.exists() and s.stat().st_size > 0, "PERSISTENCE_GUARD: save.json missing/empty"
+        assert j.exists() and j.stat().st_size > 0, "PERSISTENCE_GUARD: journal.ndjson missing/empty"
+
+    def _persist(scene_ref, dialogue_lines=None, scene_tags=None, choices=None, choice_taken=None, extra=None):
+        nonlocal SAVE
+        _end(SAVE, scene_ref, dialogue_lines or [], scene_tags or [], choices or [], choice_taken)
+        _ws(SAVE, snapshot=True)
+        _aj(SAVE, scene_ref, dialogue_lines or [], scene_tags or [], choices or [], choice_taken, extra)
+        _guard_persistence()
+
+    def _compose_footered(text):
+        try:
+            return text + "
+
+" + _footer()
+        except Exception:
+            return text
+
+    def _onboarding_prompt_text():
+        return (
+            "You drift between worlds, memory fraying to threads of light.
+"
+            "A voice—your own, distant—tries to anchor you.
+
+"
+            "What was your **name**?
+"
+            "Where did it **happen**—which **city** held your last day?
+"
+            "How did you **die**—what was the **cause**?
+"
+            "Was your dog **Appa** with you? (yes/no)
+"
+            "When you awaken in Vantiel, which **class** will your hands remember?
+
+"
+            "*(Reply in one line: e.g., “Can, katana user, İzmir, war, Appa yes”)*"
+        )
+
+    # Branch A: New Game → initialize + prompt
+    if is_new:
+        _ensure_minimal_save()
+        # Reset turn to 0 and write immediately so links exist
+        try:
+            # Persist an onboarding prompt turn
+            prompt_text = _onboarding_prompt_text()
+            dialogue = [{"speaker": None, "text": "Onboarding prompt issued."}]
+            _persist("onboarding:prompt", dialogue, ["onboarding","profile"])
+            return (_compose_footered(prompt_text), SAVE)
+        except Exception as e:
+            raise RuntimeError(f"PERSISTENCE_FAILED:new_game:{e}")
+
+    # Branch B: Profile reply?
+    prof = _parse(USER_TEXT or "")
+    if prof and any(k in prof for k in ("name","class","appa_present","city","attacker")):
+        _ensure_minimal_save()
+        # Apply parsed fields
+        SAVE = _apply(
+            SAVE,
+            name=prof.get("name",""),
+            klass=prof.get("class",""),
+            appa_present=prof.get("appa_present", None),
+            city=prof.get("city",""),
+            attacker=prof.get("attacker","")
+        )
+        # Validate completeness
+        missing = []
+        if not (SAVE.get("party",{}).get("You",{}).get("name")): missing.append("name")
+        if not (SAVE.get("party",{}).get("You",{}).get("class")): missing.append("class")
+        if (SAVE.get("party",{}).get("Appa",{}).get("present") is None): missing.append("Appa present (yes/no)")
+        if not (SAVE.get("flags",{}).get("prologue",{}).get("city")): missing.append("city")
+        if not (SAVE.get("flags",{}).get("prologue",{}).get("attacker")): missing.append("death cause")
+        if missing:
+            # Persist clarify + re-prompt
+            try:
+                msg = "Profile incomplete: missing " + ", ".join(missing) + "."
+                dialogue = [{"speaker":"System","text":msg}]
+                _persist("onboarding:clarify", dialogue, ["onboarding","clarify"])
+                text = msg + "
+
+" + _onboarding_prompt_text()
+                return (_compose_footered(text), SAVE)
+            except Exception as e:
+                raise RuntimeError(f"PERSISTENCE_FAILED:onboarding_clarify:{e}")
+        # Persist profile capture at start of next turn
+        try:
+            # Log all five fields into journal extra
+            extra = {"profile_captured": {
+                "name": SAVE["party"]["You"]["name"],
+                "class": SAVE["party"]["You"]["class"],
+                "city": SAVE["flags"]["prologue"]["city"],
+                "attacker": SAVE["flags"]["prologue"]["attacker"],
+                "appa_present": SAVE["party"]["Appa"]["present"],
+            }}
+            dialogue = [{"speaker":"System","text":"Profile captured."}]
+            _persist("onboarding:capture", dialogue, ["onboarding","profile","persist"], extra=extra)
+        except Exception as e:
+            raise RuntimeError(f"PERSISTENCE_FAILED:profile_capture:{e}")
+        # Immediately run prologue (engine handles persistence + footer)
+        prologue_text = _start_prologue(SAVE)
+        # _start_prologue should have persisted and appended footer; return as-is
+        return (prologue_text, SAVE)
+
+    # Not an onboarding-related message
+    return (None, SAVE)
+
+
+                "What was your **name**? What **class** will you awaken as? **Where** were you when it happened? "
+                "How did you **die**? Was your dog **Appa** with you?
+
+"
+                "*(Reply in one line, e.g.: "Can, katana user, İzmir, war, Appa yes")*"
+            )
+            return txt + "\n" + compose_footer()
+
+        # Branch 1: New Game requested
+        if USER_TEXT and "new game" in USER_TEXT.lower():
+            SAVE = _init_empty_save()
+            return _onboarding_text(), SAVE
+
+        # Branch 2: Handle profile reply
+        prof = parse_profile_from_text(USER_TEXT or "")
+        # Determine completeness
+        def _is_complete(p):
+            return bool(p) and all(k in p and (p[k] is not None and p[k] != "") for k in ("name","class","city","attacker")) and ("appa_present" in p and p["appa_present"] is not None)
+
+        if _is_complete(prof):
+            SAVE = load_latest_save_or_none() or _init_empty_save()
+            # Apply and persist at start-of-next-turn
+            SAVE = apply_profile(SAVE,
+                                 name=prof.get("name",""),
+                                 klass=prof.get("class",""),
+                                 appa_present=prof.get("appa_present", None),
+                                 city=prof.get("city",""),
+                                 attacker=prof.get("attacker","Strays"))
+            # Persist the profile turn
+            # Summarize choices in dialogue for the journal
+            lines = [
+                {"speaker": None, "text": f"Profile set → name={prof.get('name','')}, class={prof.get('class','')}, "
+                                           f"city={prof.get('city','')}, attacker={prof.get('attacker','Strays')}, "
+                                           f"appa_present={prof.get('appa_present',None)}"}
+            ]
+            end_turn(SAVE, "onboarding:profile", dialogue_lines=lines,
+                     scene_tags=["onboarding","profile"], choices=[], choice_taken=None)
+            write_save(SAVE, snapshot=True)
+            append_journal(SAVE, "onboarding:profile", dialogue_lines=lines,
+                           scene_tags=["onboarding","profile"], choices=[], choice_taken=None,
+                           extra={"save_snapshot": SAVE, "profile_complete": True})
+            _guard()
+            # Now immediately trigger the prologue (this should persist and append its own footer)
+            scene_text = start_prologue_now(SAVE)
+            _guard()
+            return scene_text, SAVE
+
+        # Branch 3: Partial or no parse → re-ask single-scene prompt, persist clarify turn
+        SAVE = load_latest_save_or_none() or _init_empty_save()
+        end_turn(SAVE, "onboarding:clarify",
+                 dialogue_lines=[{"speaker": None, "text": "Clarification requested: profile incomplete."}],
+                 scene_tags=["onboarding","clarify"], choices=["(awaiting profile)"], choice_taken=None)
+        write_save(SAVE, snapshot=True)
+        append_journal(SAVE, "onboarding:clarify",
+                       dialogue_lines=[{"speaker": None, "text": "Re-asking single-scene profile prompt."}],
+                       scene_tags=["onboarding","clarify"], choices=["(awaiting profile)"], choice_taken=None)
+        _guard()
+        return _onboarding_text(), SAVE
 
