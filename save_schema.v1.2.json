@@ -1,0 +1,230 @@
+{
+  "schema": {
+    "schema_version": "save.v1.2",
+    "top_level_order": [
+      "schema",
+      "turn",
+      "time",
+      "loc",
+      "world",
+      "region",
+      "town",
+      "obj",
+      "party",
+      "inventory",
+      "money",
+      "inv_delta",
+      "quests",
+      "promises",
+      "relationships",
+      "hooks",
+      "flags",
+      "crystals",
+      "position",
+      "weather",
+      "light",
+      "since_short_rest",
+      "since_long_rest",
+      "day_count",
+      "turn_tags",
+      "dialogue_log",
+      "prev_turn",
+      "motifs",
+      "promises_summary"
+    , "turn_log"],
+    "enums": {
+      "DayParts": [
+        "Dawn",
+        "Morning",
+        "Midday",
+        "Afternoon",
+        "Dusk",
+        "Night",
+        "Late Night"
+      ],
+      "RomanceIntensity": [
+        "Bold",
+        "Cautious"
+      ],
+      "PromiseStatus": [
+        "open",
+        "kept",
+        "broken",
+        "cancelled"
+      ]
+    },
+    "party_shapes": {
+      "You": {
+        "name": "string",
+        "class": "string",
+        "LV": "int",
+        "HP": "int",
+        "MP": "int",
+        "STA": "int",
+        "MaxHP": "int",
+        "MaxMP": "int",
+        "MaxSTA": "int",
+        "stats": {
+          "Might": "int",
+          "Agility": "int",
+          "Grit": "int",
+          "Focus": "int",
+          "Insight": "int",
+          "Presence": "int"
+        },
+        "loadout": {
+          "weapon": "string",
+          "armor": "string",
+          "shield": "string"
+        },
+        "cooldowns": "object",
+        "conditions": "array.object",
+        "skills": "array.string",
+        "XP": "int",
+        "XP_to_next": "int",
+        "last_level_up_turn": "int"
+      },
+      "Appa": {
+        "present": "bool",
+        "name": "string",
+        "HP": "int",
+        "STA": "int",
+        "MaxHP": "int",
+        "MaxSTA": "int",
+        "stats": {
+          "Might": "int",
+          "Agility": "int",
+          "Grit": "int",
+          "Focus": "int",
+          "Insight": "int",
+          "Presence": "int"
+        },
+        "conditions": "array.object",
+        "moves": "array.string",
+        "XP": "int",
+        "XP_to_next": "int"
+      },
+      "members[]": "same_as_You",
+      "marching_order[]": "string"
+    },
+    "money_shape": {
+      "gold": "int",
+      "silver": "int",
+      "copper": "int"
+    },
+    "inv_delta_shape": {
+      "found": "array.string",
+      "spent": "array.string",
+      "consumed": "array.string",
+      "dropped": "array.string",
+      "equipped": "array.string",
+      "notes": "array.string"
+    },
+    "quest_shape": {
+      "id": "string",
+      "name": "string",
+      "stage": "int",
+      "stages_total": "int",
+      "description": "string",
+      "progress": "string"
+    },
+    "promises_shape": {
+      "id": "string",
+      "to": "string",
+      "topic": "string",
+      "made_turn": "int",
+      "due_by": "string?",
+      "status": "enum:PromiseStatus",
+      "linked_quest_id": "string?",
+      "reward": "object?",
+      "penalty": "object?",
+      "notes": "string?",
+      "history": "array.object?"
+    },
+    "relationships_shape": {
+      "*": {
+        "score": "int",
+        "level": "int",
+        "last_change_turn": "int",
+        "history": "array.string?"
+      }
+    },
+    "flags_shape": {
+      "last_focus_companion": "string?",
+      "origin": "string",
+      "prologue": {
+        "city": "string",
+        "attacker": "string",
+        "death": "bool",
+        "completed": "bool"
+      },
+      "gate_party_meet": "bool",
+      "romance_intensity": "enum:RomanceIntensity",
+      "guild": {
+        "rank": "string",
+        "rank_points": "int",
+        "rp_pending": "int"
+      },
+      "reputation": "object",
+      "preferences": {
+        "tone": "string",
+        "romance": "string",
+        "nsfw": "bool",
+        "formatting": "bool"
+      },
+      "integrity": {
+        "schema_migration": "string",
+        "save_hash": "string"
+      }
+    },
+    "crystals_shape": {
+      "I": "int",
+      "II": "int",
+      "III": "int",
+      "IV": "int",
+      "V": "int"
+    },
+    "position_shape": {
+      "town": "string",
+      "area": "string",
+      "node": "string"
+    },
+    "dialogue_log_entry_shape": {
+      "turn": "int",
+      "scene": "string",
+      "lines": "array.object",
+      "choice": "int?",
+      "tags": "array.string"
+    },
+    "dialogue_line_shape": {
+      "speaker": "string",
+      "text": "string",
+      "tags": "array.string?"
+    },
+    "hooks_shape": {
+      "id": "string",
+      "when": "object",
+      "if": "object?",
+      "do": "array.object"
+    },
+    "motifs_shape": {
+      "running_jokes[]": {
+        "last_used_turn": "int?",
+        "id": "string",
+        "participants": "array.string",
+        "setup_turn": "int",
+        "tags": "array.string",
+        "callbacks": "array.object",
+        "times_used": "int",
+        "cooldown_turns": "int",
+        "retire_after": "int",
+        "active": "bool"
+      },
+      "motifs_summary": "string?"
+    },
+    "prev_turn_shape": {
+      "turn": "int",
+      "ref": "string"
+    }
+  }
+}
